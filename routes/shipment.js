@@ -19,23 +19,50 @@ const getRoute=async(origin,destination)=>{
             }
 
         );
-        const steps=response.data.routes[0].legs[0].steps;
-        return steps;
+        const legs=response.data.routes[0].legs[0];
+        const keyLocations=[
+            legs.start_location,
+            ...(legs.via_waypoints||[]),
+            legs.end_location
+        ];
+        return keyLocations;
 
     } catch (error) {
         
     }
 }
 
-
+//get ETA
+const getETA=async(origin,destination)=>{
+    try {
+        const response=await axios.get(
+            `https://maps.gomaps.pro/maps/api/distancematrix/json`,
+            {
+                params:{
+                    origins:origin,
+                    destinations:destination,
+                    key:G_MAP_KEY
+                }
+            }
+        );
+        const etaSeconds = response.data.rows[0].elements[0].duration.value;
+        const etaDate= new Date(Date.now()+etaSeconds*1000);
+    
+        return etaDate;
+    } catch (error) {
+        return 
+    }
+}
 
 
 //POST
 router.post("/shipment",async(req,res)=>{
     try {
-    const {containerId, origin, destination, currentLocation, ETA, status } = req.body;
+    const {containerId, origin, destination, status } = req.body;
     const existingShipment= await Shipment.findOne({containerId});
     const route= await getRoute(origin,destination);
+    const ETA = await getETA(origin,destination);
+    const currentLocation=origin;
 
     if(existingShipment){
         return res.status(400).json({message:"Container already exists"});
