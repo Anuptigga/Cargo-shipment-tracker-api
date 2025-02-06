@@ -83,7 +83,7 @@ router.post("/shipment",async(req,res)=>{
     } catch (error) {
         res.status(500).json(error);
     }
-},
+}
 
 )
 //GET ALL
@@ -109,12 +109,16 @@ router.get("/shipment/:id",async(req,res)=>{
     }
 })
 
-//POST UPDATE LOCATION
+//PUT UPDATE LOCATION
 router.put("/shipment/:id/update-location",async(req,res)=>{
     try {
         const shipment= await Shipment.findById(req.params.id);
         const {currentLocation}=req.body;
         shipment.currentLocation=currentLocation;
+
+        const newETA= await getETA(currentLocation,shipment.destination);
+        shipment.ETA=newETA;
+
         await shipment.save();
         res.status(200).json({message:"Updated Successfully", shipment});
     } catch (error) {

@@ -1,7 +1,6 @@
 import mongoose, { Schema } from "mongoose";
 
 const ShipmentSchema = new Schema({
-    // shipmentId: { type: Schema.Types.ObjectId, unique: true, default: mongoose.Types.ObjectId },
     containerId: { type: String, unique: true, required: true },
     origin: { type: String, required: true },
     destination: { type: String, required: true },

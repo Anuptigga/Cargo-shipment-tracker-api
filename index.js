@@ -1,5 +1,6 @@
 import express from "express";
 import mongoose from "mongoose";
+import cors from "cors";
 import shipmentRoute from "./routes/shipment.js";
 const app=express();
 const MONGO_URL="mongodb+srv://anup:anup2024@cluster0.cthm1.mongodb.net/Cargo";
@@ -9,6 +10,7 @@ mongoose.connect(MONGO_URL).then(()=>{
     console.log(error);
 });
 
+app.use(cors());
 app.use(express.json());
 app.use("/",shipmentRoute);
 
