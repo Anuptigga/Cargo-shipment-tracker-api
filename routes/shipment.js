@@ -5,32 +5,24 @@ import axios from "axios";
 const router=Router();
 const G_MAP_KEY="AlzaSyIV0zeb3x0Hb14H_niKMGKdj5L0PY_Aq1g";
 
-//get route 
-const getRoute=async(origin,destination)=>{
+
+//get coordinates
+const getCoordinates = async (locationName) => {
     try {
-        const response=await axios.get(
-            `https://maps.gomaps.pro/maps/api/directions/json`,
-            {
-                params:{
-                    origin,
-                    destination,
-                    key:G_MAP_KEY
-                }
-            }
-
-        );
-        const legs=response.data.routes[0].legs[0];
-        const keyLocations=[
-            legs.start_location,
-            ...(legs.via_waypoints||[]),
-            legs.end_location
-        ];
-        return keyLocations;
-
-    } catch (error) {
+        const url = `https://maps.gomaps.pro/maps/api/geocode/json?address=${encodeURIComponent(locationName)}&key=${G_MAP_KEY}`;
         
+        const response = await axios.get(url);
+        if (response.data.status === "OK") {
+            const { lat, lng } = response.data.results[0].geometry.location;
+            return { lat, lng };
+        } else {
+            throw new Error("Invalid location or API limit reached");
+        }
+    } catch (error) {
+        console.error("Geocoding error:", error.message);
+        return null;
     }
-}
+};
 
 //get ETA
 const getETA=async(origin,destination)=>{
@@ -56,36 +48,44 @@ const getETA=async(origin,destination)=>{
 
 
 //POST
-router.post("/shipment",async(req,res)=>{
+router.post("/shipment", async (req, res) => {
     try {
-    const {containerId, origin, destination, status } = req.body;
-    const existingShipment= await Shipment.findOne({containerId});
-    const route= await getRoute(origin,destination);
-    const ETA = await getETA(origin,destination);
-    const currentLocation=origin;
-
-    if(existingShipment){
-        return res.status(400).json({message:"Container already exists"});
-    }
+        const { containerId, origin, destination, status } = req.body;
 
 
-    const newShipment= new Shipment({
-        containerId,
-        origin,
-        destination,
-        route,
-        currentLocation,
-        ETA,
-        status
-    });
-        const savedShipment= await newShipment.save();
+        const existingShipment = await Shipment.findOne({ containerId });
+        if (existingShipment) {
+            return res.status(400).json({ message: "Container already exists" });
+        }
+
+
+        const originCoords = await getCoordinates(origin);
+        const destinationCoords = await getCoordinates(destination);
+        if (!originCoords || !destinationCoords) {
+            return res.status(400).json({ message: "Invalid origin or destination" });
+        }
+        const currentLocation = { name: origin, coordinates: originCoords };
+        const ETA = await getETA(currentLocation.name,destination);
+        const route = [{ name: origin, coordinates: originCoords }];
+
+
+        const newShipment = new Shipment({
+            containerId,
+            origin: { name: origin, coordinates: originCoords },
+            destination: { name: destination, coordinates: destinationCoords },
+            route,
+            currentLocation,
+            ETA,
+            status,
+        });
+
+        const savedShipment = await newShipment.save();
         res.status(200).json(savedShipment);
     } catch (error) {
-        res.status(500).json(error);
+        res.status(500).json({ error: error.message });
     }
-}
+});
 
-)
 //GET ALL
 router.get("/shipments",async(req,res)=>{
     try {
@@ -113,10 +113,12 @@ router.get("/shipment/:id",async(req,res)=>{
 router.put("/shipment/:id/update-location",async(req,res)=>{
     try {
         const shipment= await Shipment.findById(req.params.id);
-        const {currentLocation}=req.body;
-        shipment.currentLocation=currentLocation;
-
-        const newETA= await getETA(currentLocation,shipment.destination);
+        
+        const {newLocation}=req.body;
+        const newETA= await getETA(newLocation.name,shipment.destination);
+        const newCoords= await getCoordinates(newLocation.name);
+        shipment.currentLocation={name:newLocation.name, coordinates:newCoords};
+        shipment.route.push({ name: newLocation.name, coordinates: newCoords });
         shipment.ETA=newETA;
 
         await shipment.save();
@@ -127,13 +129,27 @@ router.put("/shipment/:id/update-location",async(req,res)=>{
 })
 
 
-//GET ETA
-router.get("/shipment/:id/eta",async(req,res)=>{
+// UPDATE STATUS
+router.put("/shipment/:id", async (req, res) => {
     try {
-        const shipment= await Shipment.findById(req.params.id);
-        res.status(200).json({ETA:shipment.ETA});
+        const shipment = await Shipment.findById(req.params.id);
+        const { status } = req.body;
+        shipment.status = status;
+        shipment.currentLocation = {
+            name: shipment.destination.name,
+            coordinates: shipment.destination.coordinates
+        };
+        shipment.route.push({
+            name: shipment.destination.name,
+            coordinates: shipment.destination.coordinates
+        });
+        shipment.ETA = new Date();
+        await shipment.save();
+        res.status(200).json({ message: "Updated Successfully"});
     } catch (error) {
-        res.status(500).json(error);
+        res.status(500).json({ error: error.message });
     }
-})
+});
+
+
 export default router;
