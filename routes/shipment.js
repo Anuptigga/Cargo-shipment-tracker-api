@@ -135,15 +135,17 @@ router.put("/shipment/:id", async (req, res) => {
         const shipment = await Shipment.findById(req.params.id);
         const { status } = req.body;
         shipment.status = status;
-        shipment.currentLocation = {
-            name: shipment.destination.name,
-            coordinates: shipment.destination.coordinates
-        };
-        shipment.route.push({
-            name: shipment.destination.name,
-            coordinates: shipment.destination.coordinates
-        });
-        shipment.ETA = new Date();
+        if(status==="Delivered"){
+            shipment.currentLocation = {
+                name: shipment.destination.name,
+                coordinates: shipment.destination.coordinates
+            };
+            shipment.route.push({
+                name: shipment.destination.name,
+                coordinates: shipment.destination.coordinates
+            });
+            shipment.ETA = new Date();
+        }
         await shipment.save();
         res.status(200).json({ message: "Updated Successfully"});
     } catch (error) {
