@@ -1,15 +1,14 @@
 import { Router } from "express";
 import Shipment from "../models/Shipment.js";
 import axios from "axios";
-
+import dotenv from "dotenv";
+dotenv.config();
 const router=Router();
-const G_MAP_KEY="AlzaSyIV0zeb3x0Hb14H_niKMGKdj5L0PY_Aq1g";
-
 
 //get coordinates
 const getCoordinates = async (locationName) => {
     try {
-        const url = `https://maps.gomaps.pro/maps/api/geocode/json?address=${encodeURIComponent(locationName)}&key=${G_MAP_KEY}`;
+        const url = `https://maps.gomaps.pro/maps/api/geocode/json?address=${encodeURIComponent(locationName)}&key=${process.env.G_MAP_KEY}`;
         
         const response = await axios.get(url);
         if (response.data.status === "OK") {
@@ -33,7 +32,7 @@ const getETA=async(origin,destination)=>{
                 params:{
                     origins:origin,
                     destinations:destination,
-                    key:G_MAP_KEY
+                    key:process.env.G_MAP_KEY
                 }
             }
         );

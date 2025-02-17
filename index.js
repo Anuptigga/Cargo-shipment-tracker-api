@@ -2,9 +2,10 @@ import express from "express";
 import mongoose from "mongoose";
 import cors from "cors";
 import shipmentRoute from "./routes/shipment.js";
+import dotenv from "dotenv";
+dotenv.config();
 const app=express();
-const MONGO_URL="mongodb+srv://anup:anup2024@cluster0.cthm1.mongodb.net/Cargoo";
-mongoose.connect(MONGO_URL).then(()=>{
+mongoose.connect(process.env.MONGO_URL).then(()=>{
     console.log("DB Connected Successfully");
 }).catch((error)=>{
     console.log(error);
