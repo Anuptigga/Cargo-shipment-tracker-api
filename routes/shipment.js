@@ -119,7 +119,6 @@ router.put("/shipment/:id/update-location",async(req,res)=>{
         shipment.currentLocation={name:newLocation.name, coordinates:newCoords};
         shipment.route.push({ name: newLocation.name, coordinates: newCoords });
         shipment.ETA=newETA;
-
         await shipment.save();
         res.status(200).json({message:"Updated Successfully", shipment});
     } catch (error) {
